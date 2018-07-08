@@ -1,20 +1,24 @@
-curl -s -X POST -H "Content-Type: application/json" -d '{ "missing_name": "John" }'    "http://localhost:8000/user" > fail_user.log
-curl -s -X POST -H "Content-Type: application/json" -d '{ "name": "" }'    "http://localhost:8000/user" > fail_user.log
-curl -s -X POST -H "Content-Type: application/json" -d '{ "name": "John" }'    "http://localhost:8000/user" > new_user.log
-USER=`cat new_user.log | grep "id" | cut -d '"' -f 4`
-echo USER $USER
-curl -s -X GET -H "Content-Type: application/json"                            "http://localhost:8000/user" > get_users.log
-curl -s -X GET -H "Content-Type: application/json"                            "http://localhost:8000/user/$USER/stats" > get_new_user_stats.log
+OPTS="-s -H \"Content-Type: application/json\" "
 
-curl -s -X GET -H "Content-Type: application/json"                                       "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/stats" > get_first_stats.log
-curl -s -X PUT -H "Content-Type: application/json" -d '{ "gamesPlayed": 0, score: 0}'    "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/stats" > clear_stats.log
-curl -s -X PUT -H "Content-Type: application/json"                                       "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/stats" > get_clear_stats.log
-curl -s -X PUT -H "Content-Type: application/json" -d '{ "gamesPlayed": 10, score: 100}' "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/stats" > put_stats.log
-curl -s -X PUT -H "Content-Type: application/json" -d '{ "Friends": [] }'                "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > get_stats.log
-curl -s -X GET -H "Content-Type: application/json"                                       "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > get_empty_friends.log
-curl -s -X PUT -H "Content-Type: application/json" -d '{ "Friends": ["171a1963-7f9f-11e8-90df-6a0001660200", "edd52600-7f9e-11e8-90da-6a0001660200"] }' \
-                                                                                      "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > put_friends.log
-curl -s -X GET -H "Content-Type: application/json"                                       "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > get_friends.log
-curl -s -X PUT -H "Content-Type: application/json" -d '{ "Friends": [] }' \
-                                                                                      "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > reset_friends.log
-curl -s -X GET -H "Content-Type: application/json"                                       "http://localhost:8000/user/c21039b3-7f8b-11e8-8a31-6a0001660200/friends" > get_empty_friends.log
+curl $OPTS -X POST -d '{ "missing_name": "John" }'    "http://localhost:8000/user"      > 1_fail_user.log
+curl $OPTS -X POST -d '{ "name": "" }'    "http://localhost:8000/user"                  > 2_fail_user.log
+curl $OPTS -X POST -H "X-UUID: deaddead-dead-dead-dead-deaddeaddead" -d '{ "name": "John" }'    \
+                                                          "http://localhost:8000/user"  > 3_new_user.log
+USERID=`cat 3_new_user.log | grep "id" | cut -d '"' -f 4`
+echo USERID $USERID
+curl $OPTS -X GET                                         "http://localhost:8000/user"  > 4_get_users.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID"         > 5_get_new_user.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/state"   > 6_get_new_user_stats.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/state"   > 7_get_first_state.log
+curl $OPTS -X PUT -d '{ "gamesPlayed": 0, "score": 0 }'   "http://localhost:8000/user/$USERID/state"   > 8_clear_state.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/state"   > 10_get_clear_state.log
+curl $OPTS -X PUT -d '{ "gamesPlayed": 10, "score": 100}' "http://localhost:8000/user/$USERID/state"   > 11_put_state.log
+curl $OPTS -X PUT -d '{ "friends": [] }'                  "http://localhost:8000/user/$USERID/friends" > 12_get_state.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/friends" > 13_get_empty_friends.log
+curl $OPTS -X PUT -d '{ "friends": ["171a1963-7f9f-11e8-90df-6a0001660200", "edd52600-7f9e-11e8-90da-6a0001660200"] }' \
+                                                          "http://localhost:8000/user/$USERID/friends" > 14_put_friends.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/friends" > 15_get_friends.log
+curl $OPTS -X PUT -d '{ "friends": [] }'                  "http://localhost:8000/user/$USERID/friends" > 16_reset_friends.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID/friends" > 17_get_empty_friends.log
+curl $OPTS -X GET                                         "http://localhost:8000/user/$USERID"         > 18_get_new_user_again.log
+curl $OPTS -X DELETE                                      "http://localhost:8000/user/$USERID"         > 19_get_new_user_again.log
