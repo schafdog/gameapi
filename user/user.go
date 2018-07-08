@@ -2,19 +2,45 @@ package User
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/schafdog/gameapi/cassandra"
 	"net/http"
 )
 
+type userCreateResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type NewUserRequest struct {
+	Name *string `json:"name"`
+}
+
+// UserResponse builds a payload of new user resource ID
+type UserResponse struct {
+	Id   gocql.UUID `json:"id"`
+	Name string     `json:"name"`
+}
+
+// UsersResponse to form payload of an array of User structs
+type UsersResponse struct {
+	Users []UserResponse `json:"users"`
+}
+
 func ParsePostUserRequest(r *http.Request) (user User, err error) {
+	var newUser NewUserRequest
 	decoder := json.NewDecoder(r.Body)
-	err = decoder.Decode(&user)
+	err = decoder.Decode(&newUser)
 	if err != nil {
 		fmt.Println("Parse Post User Request errors", err.Error())
+		return User{}, err
 	}
-	return user, err
+	if newUser.Name == nil || len(*newUser.Name) == 0 {
+		return User{}, errors.New("User: Name is missing or empty")
+	}
+	return User{Name: *newUser.Name}, err
 }
 
 func PostUser(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +51,7 @@ func PostUser(w http.ResponseWriter, r *http.Request) {
 		HandleHttpResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	err = persist(&user)
+	err = Persist(&user)
 	if err != nil {
 		HandleHttpResponse(w, http.StatusInternalServerError, "Failed to persist "+user.Id.String()+": "+err.Error())
 		return
@@ -33,7 +59,7 @@ func PostUser(w http.ResponseWriter, r *http.Request) {
 	HandleNewUserResponse(w, user)
 }
 
-func persist(user *User) error {
+func Persist(user *User) error {
 	var gocqlUuid gocql.UUID
 
 	// generate a unique UUID for this user
@@ -45,22 +71,44 @@ func persist(user *User) error {
 	return err
 }
 
+func Delete(uuid gocql.UUID) error {
+	// write data to Cassandra
+	err := cassandra.Session.Query(`DELETE FROM user where id = ?`, uuid).Exec()
+	return err
+}
+
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	var uuid, error = ParseUserid(r)
+	if error != nil {
+		fmt.Println("Failed to parse user id")
+		HandleHttpResponse(w, http.StatusBadRequest, error.Error())
+		return
+	}
+	fmt.Printf("userid %v", uuid)
+	error = Delete(uuid)
+	if error != nil {
+		fmt.Printf("Failed to delete user %v: %v\n", uuid, error.Error())
+		// Handle not found and internal server error
+		HandleHttpResponse(w, http.StatusInternalServerError, error.Error())
+	}
+
+}
 func HandleNewUserResponse(w http.ResponseWriter, user User) {
 	fmt.Println("user_id", user.Id)
 	decoder := json.NewEncoder(w)
 	decoder.SetIndent("", "   ")
-	decoder.Encode(NewUserResponse{Id: user.Id, Name: user.Name})
+	decoder.Encode(UserResponse{Id: user.Id, Name: user.Name})
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
-	var userList []NewUserResponse
+	var userList []UserResponse
 	m := map[string]interface{}{}
 
 	query := "SELECT id,name FROM User"
 	iterable := cassandra.Session.Query(query).Iter()
 	for iterable.MapScan(m) {
 		fmt.Printf("User{ id: %v, name: %v }", m["id"], m["name"])
-		userList = append(userList, NewUserResponse{
+		userList = append(userList, UserResponse{
 			Id:   m["id"].(gocql.UUID),
 			Name: m["name"].(string),
 		})
