@@ -28,7 +28,7 @@ func getFriends(userid gocql.UUID) (FriendsResponse, []string) {
 	var friendsList []FriendResponse
 	var errs []string
 	if err := cassandra.Session.Query(`
-      select friends2 from User where id = ?`,
+      select friends from User where id = ?`,
 		userid).Scan(&friends); err != nil {
 		errs = append(errs, err.Error())
 		return FriendsResponse{Friends: friendsList}, errs
@@ -78,7 +78,7 @@ func ParseFriendsRequest(r *http.Request) (FriendsRequest, error) {
 }
 
 func UpdateFriends(userid gocql.UUID, friends FriendsRequest) error {
-	if err := cassandra.Session.Query(`update User set friends2 = ? where id = ?`,
+	if err := cassandra.Session.Query(`update User set friends = ? where id = ?`,
 		friends.Friends, userid).Exec(); err != nil {
 		fmt.Println("Failed to update friends: ", err.Error())
 		return err
