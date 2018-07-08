@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gocql/gocql"
-	//	"github.com/gorilla/mux"
 	"github.com/schafdog/gameapi/cassandra"
 	"net/http"
 )
