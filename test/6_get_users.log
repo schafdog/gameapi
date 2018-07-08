@@ -1,0 +1,20 @@
+{
+   "users": [
+      {
+         "id": "f9a9af78-6681-4d7d-8ae7-fc41e7a24d08",
+         "name": "Bob"
+      },
+      {
+         "id": "2d18862b-b9c3-40f5-803e-5e100a520249",
+         "name": "Alice"
+      },
+      {
+         "id": "deaddead-dead-dead-dead-deaddeaddead",
+         "name": "Dennis"
+      },
+      {
+         "id": "18dd75e9-3d4a-48e2-bafc-3c8f95a8f0d1",
+         "name": "John"
+      }
+   ]
+}
