@@ -1,0 +1,14 @@
+{
+   "friends": [
+      {
+         "id": "edd52600-7f9e-11e8-90da-6a0001660200",
+         "name": "Tester",
+         "highscore": 121312313
+      },
+      {
+         "id": "171a1963-7f9f-11e8-90df-6a0001660200",
+         "name": "John",
+         "highscore": 120
+      }
+   ]
+}
