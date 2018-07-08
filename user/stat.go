@@ -9,19 +9,6 @@ import (
 	"net/http"
 )
 
-func ParseUserRequest(r *http.Request) (User, []string) {
-	var user User
-	var errs []string
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&user)
-	if err != nil {
-		fmt.Println("errors", errs)
-		//		w.WriteHeader(http.StatusBadRequest)
-		//		json.NewEncoder(w).Encode(ErrorResponse{Errors: err})
-	}
-	return user, errs
-}
-
 func ParseUserid(r *http.Request) (gocql.UUID, error) {
 	var uuid gocql.UUID
 	var error error
@@ -31,8 +18,8 @@ func ParseUserid(r *http.Request) (gocql.UUID, error) {
 	return uuid, error
 }
 
-func ParseStatRequest(r *http.Request) (Stat, []string) {
-	var stat Stat
+func ParseStateRequest(r *http.Request) (State, []string) {
+	var stat State
 	var errs []string
 	uuid, error := ParseUserid(r)
 	if error != nil {
@@ -42,7 +29,7 @@ func ParseStatRequest(r *http.Request) (Stat, []string) {
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&stat)
 		if err != nil {
-			fmt.Println("Failed to parse ParseStatRequest", err)
+			fmt.Println("Failed to parse ParseStateRequest", err)
 			errs = append(errs, err.Error())
 		}
 	}
@@ -50,9 +37,9 @@ func ParseStatRequest(r *http.Request) (Stat, []string) {
 	return stat, errs
 }
 
-func GetStat(w http.ResponseWriter, r *http.Request) {
+func GetState(w http.ResponseWriter, r *http.Request) {
 	var errs []string
-	var stat Stat
+	var stat State
 	var uuid, error = ParseUserid(r)
 	if error != nil {
 		errs = append(errs, "Failed to parse uuid in: "+r.URL.Path)
@@ -60,17 +47,17 @@ func GetStat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stat.Id = uuid
-	errs = getStat(&stat)
-	handleStatResponse(w, stat, errs)
+	errs = getState(&stat)
+	handleStateResponse(w, stat, errs)
 }
 
-func lookup(stat *Stat) []string {
+func lookup(stat *State) []string {
 	var result []string
 	return result
 }
 
-func PutStat(w http.ResponseWriter, r *http.Request) {
-	var stat Stat
+func PutState(w http.ResponseWriter, r *http.Request) {
+	var stat State
 	var errs []string
 	var uuid gocql.UUID
 	var error error
@@ -78,10 +65,10 @@ func PutStat(w http.ResponseWriter, r *http.Request) {
 	uuid, error = gocql.ParseUUID(vars["userid"])
 	fmt.Printf("User Id: %s\n", uuid)
 	if error != nil {
-		handleStatResponse(w, stat, errs)
+		handleStateResponse(w, stat, errs)
 		return
 	}
-	stat, errs = ParseStatRequest(r)
+	stat, errs = ParseStateRequest(r)
 	if len(errs) != 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorResponse{Errors: errs})
@@ -89,11 +76,11 @@ func PutStat(w http.ResponseWriter, r *http.Request) {
 	}
 	stat.Id = uuid
 	fmt.Printf("Userid %v Played %v games with highscore %v \n", stat.Id, stat.GamesPlayed, stat.Highscore)
-	errs = persistStat(&stat)
+	errs = persistState(&stat)
 	handlePutResponse(w, stat, errs)
 }
 
-func persistStat(stat *Stat) []string {
+func persistState(stat *State) []string {
 	var errs []string
 	if err := cassandra.Session.Query(`
       UPDATE user set gamesPlayed = ?, score = ? where id = ?`,
@@ -103,19 +90,19 @@ func persistStat(stat *Stat) []string {
 	return errs
 }
 
-func getStat(stat *Stat) []string {
+func getState(state *State) []string {
 	var errs []string
 	if err := cassandra.Session.Query(`
       select gamesPlayed, score from User where id = ?`,
-		stat.Id).Scan(&stat.GamesPlayed, &stat.Highscore); err != nil {
+		state.Id).Scan(&state.GamesPlayed, &state.Highscore); err != nil {
 		errs = append(errs, err.Error())
 	}
 	return errs
 }
 
-func handlePutResponse(w http.ResponseWriter, stat Stat, errs []string) {
+func handlePutResponse(w http.ResponseWriter, state State, errs []string) {
 	if errs == nil || len(errs) == 0 {
-		fmt.Println("user_id", stat.Id)
+		fmt.Println("user_id", state.Id)
 		w.WriteHeader(http.StatusOK)
 	} else {
 		fmt.Println("errors", errs)
@@ -123,12 +110,12 @@ func handlePutResponse(w http.ResponseWriter, stat Stat, errs []string) {
 	}
 }
 
-func handleStatResponse(w http.ResponseWriter, stat Stat, errs []string) {
+func handleStateResponse(w http.ResponseWriter, state State, errs []string) {
 	if errs == nil {
-		fmt.Println("user id", stat.Id, stat.GamesPlayed, stat.Highscore)
+		fmt.Println("user id", state.Id, state.GamesPlayed, state.Highscore)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "   ")
-		encoder.Encode(UserStat{GamesPlayed: stat.GamesPlayed, Highscore: stat.Highscore})
+		encoder.Encode(UserState{GamesPlayed: state.GamesPlayed, Highscore: state.Highscore})
 	} else {
 		fmt.Println("errors", errs)
 		json.NewEncoder(w).Encode(ErrorResponse{Errors: errs})
