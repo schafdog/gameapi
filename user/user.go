@@ -31,6 +31,17 @@ type UsersResponse struct {
 
 func ParsePostUserRequest(r *http.Request) (user User, err error) {
 	var newUser NewUserRequest
+	var uuidStr string
+	var uuid gocql.UUID
+	uuid = gocql.TimeUUID()
+	uuidStr = r.Header.Get("X-UUID")
+	if uuidStr != "" {
+		fmt.Printf("Suggestion for UUID: %v\n", uuidStr)
+		uuid, err = gocql.ParseUUID(uuidStr)
+		if err != nil {
+			fmt.Printf("Failed to parse X-UUID: %v\n", uuidStr)
+		}
+	}
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&newUser)
 	if err != nil {
@@ -40,7 +51,7 @@ func ParsePostUserRequest(r *http.Request) (user User, err error) {
 	if newUser.Name == nil || len(*newUser.Name) == 0 {
 		return User{}, errors.New("User: Name is missing or empty")
 	}
-	return User{Name: *newUser.Name}, err
+	return User{Name: *newUser.Name, Id: &uuid}, err
 }
 
 func PostUser(w http.ResponseWriter, r *http.Request) {
@@ -63,11 +74,16 @@ func Persist(user *User) error {
 	var gocqlUuid gocql.UUID
 
 	// generate a unique UUID for this user
-	gocqlUuid = gocql.TimeUUID()
-	fmt.Println("creating a new user", gocqlUuid, " for ", user.Name)
-	user.Id = gocqlUuid
+	if user.Id == nil {
+		gocqlUuid = gocql.TimeUUID()
+		fmt.Printf("creating a new userid %v for %v\n", gocqlUuid, user.Name)
+		user.Id = &gocqlUuid
+	} else {
+		fmt.Printf("Using suggestion %v from header for %v\n", user.Id, user.Name)
+	}
 	// write data to Cassandra
-	err := cassandra.Session.Query(`INSERT INTO user (id, name, score, gamesplayed) VALUES (?, ?, ?, ?)`, gocqlUuid, user.Name, 0, 0).Exec()
+	var friends []gocql.UUID
+	err := cassandra.Session.Query(`INSERT INTO user (id, name, score, gamesplayed, friends) VALUES (?, ?, ?, ?, ?)`, user.Id, user.Name, 0, 0, friends).Exec()
 	return err
 }
 
@@ -97,7 +113,7 @@ func HandleNewUserResponse(w http.ResponseWriter, user User) {
 	fmt.Println("user_id", user.Id)
 	decoder := json.NewEncoder(w)
 	decoder.SetIndent("", "   ")
-	decoder.Encode(UserResponse{Id: user.Id, Name: user.Name})
+	decoder.Encode(UserResponse{Id: *user.Id, Name: user.Name})
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +123,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT id,name FROM User"
 	iterable := cassandra.Session.Query(query).Iter()
 	for iterable.MapScan(m) {
-		fmt.Printf("User{ id: %v, name: %v }", m["id"], m["name"])
+		fmt.Printf("User{ id: %v, name: %v }\n", m["id"], m["name"])
 		userList = append(userList, UserResponse{
 			Id:   m["id"].(gocql.UUID),
 			Name: m["name"].(string),
