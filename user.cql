@@ -3,7 +3,7 @@ create table user (
   id UUID,
   name text,
   highscore int,
-  friends text,
+  friends set<UUID>,
   version int,
   PRIMARY KEY(id)
 );
