@@ -32,14 +32,16 @@ type UsersResponse struct {
 func ParsePostUserRequest(r *http.Request) (user User, err error) {
 	var newUser NewUserRequest
 	var uuidStr string
-	var uuid gocql.UUID
-	uuid = gocql.TimeUUID()
+	var uuid *gocql.UUID
+	uuid = nil
 	uuidStr = r.Header.Get("X-UUID")
+	fmt.Printf("X-UUID: '%v' \n", uuidStr)
 	if uuidStr != "" {
-		fmt.Printf("Suggestion for UUID: %v\n", uuidStr)
-		uuid, err = gocql.ParseUUID(uuidStr)
+		tmpuuid, err := gocql.ParseUUID(uuidStr)
 		if err != nil {
 			fmt.Printf("Failed to parse X-UUID: %v\n", uuidStr)
+		} else {
+			uuid = &tmpuuid
 		}
 	}
 	decoder := json.NewDecoder(r.Body)
@@ -51,7 +53,7 @@ func ParsePostUserRequest(r *http.Request) (user User, err error) {
 	if newUser.Name == nil || len(*newUser.Name) == 0 {
 		return User{}, errors.New("User: Name is missing or empty")
 	}
-	return User{Name: *newUser.Name, Id: &uuid}, err
+	return User{Name: *newUser.Name, Id: uuid}, err
 }
 
 func PostUser(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +89,31 @@ func Persist(user *User) error {
 	return err
 }
 
+func GetUser(w http.ResponseWriter, r *http.Request) {
+
+	var uuid, error = ParseUserid(r)
+	if error != nil {
+		HandleHttpResponse(w, http.StatusBadRequest, error.Error())
+		return
+	}
+	user := User{Id: &uuid}
+	error = Get(&user)
+	if error != nil {
+		HandleHttpResponse(w, http.StatusNotFound, error.Error())
+	}
+	HandleUserResponse(w, user)
+	return
+}
+
+func Get(user *User) error {
+	query := "SELECT id,name, score, gamesPlayed  FROM User where id = ?"
+	if err := cassandra.Session.Query(query, user.Id).
+		Scan(&user.Id, &user.Name, &user.GamesPlayed, &user.Highscore); err != nil {
+		return err
+	}
+	return nil
+}
+
 func Delete(uuid gocql.UUID) error {
 	// write data to Cassandra
 	err := cassandra.Session.Query(`DELETE FROM user where id = ?`, uuid).Exec()
@@ -109,11 +136,19 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func HandleUserResponse(w http.ResponseWriter, user User) {
+	fmt.Println("user_id", user.Id)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "   ")
+	encoder.Encode(user)
+}
+
 func HandleNewUserResponse(w http.ResponseWriter, user User) {
 	fmt.Println("user_id", user.Id)
-	decoder := json.NewEncoder(w)
-	decoder.SetIndent("", "   ")
-	decoder.Encode(UserResponse{Id: *user.Id, Name: user.Name})
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "   ")
+	encoder.Encode(UserResponse{Id: *user.Id, Name: user.Name})
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
