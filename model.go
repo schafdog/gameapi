@@ -1,35 +1,47 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
+	//	"errors"
 	"github.com/gocql/gocql"
 )
 
-type user struct {
-	Id          gocql.UUID   `json:"id"`
+type User struct {
+	Id          *gocql.UUID  `json:"id"`
 	Name        string       `json:"name"`
 	Highscore   int          `json:"score"`
 	GamesPlayed int          `json:"gamesPlayed"`
 	Friends     []gocql.UUID `json:"friends"`
 }
 
-func (p *user) getUser(db *sql.DB) error {
-	return errors.New("Not implemented")
+// State to form payload returning a single User state
+type State struct {
+	Id          gocql.UUID `json:"id"`
+	Highscore   int        `json:"score"`
+	GamesPlayed int        `json:"gamesPlayed"`
 }
 
-func (p *user) updateUser(db *sql.DB) error {
-	return errors.New("Not implemented")
-}
+type UserDatabase interface {
 
-func (p *user) deleteUser(db *sql.DB) error {
-	return errors.New("Not implemented")
-}
+	// CRUD operations for the Model
 
-func (p *user) createUser(db *sql.DB) error {
-	return errors.New("Not implemented")
-}
+	// Create a User
+	CreateUser(user User) (uuid *gocql.UUID, err error)
+	RetrieveUser(userid gocql.UUID) (user *User, err error)
+	UpdateUser(user User) error
 
-func getUsers(db *sql.DB, start, count int) ([]user, error) {
-	return nil, errors.New("Not implemented")
+	// Delete a user
+	DeleteUser(useri gocql.UUID) (err error)
+
+	ListUsers() (users []User, err error)
+
+	// Set, Get for User state
+	SetState(userid gocql.UUID, state State) error
+	GetState(userid gocql.UUID) (state *State, err error)
+
+	// Set, Get for User friends
+	SetFriends(userid gocql.UUID, friends []gocql.UUID) error
+	GetFriendsState(userid gocql.UUID) (state []State, err error)
+
+	// Close any outstanding DB resources
+	Close() error
 }
