@@ -5,9 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocql/gocql"
-	"github.com/schafdog/gameapi/cassandra"
+	//	"github.com/schafdog/model.go"
 	"net/http"
 )
+
+var DB *main.DB
+
+func userInit(newDB *DB) {
+	DB = newDB
+}
 
 type userCreateResponse struct {
 	ID   string `json:"id"`
@@ -64,29 +70,12 @@ func PostUser(w http.ResponseWriter, r *http.Request) {
 		HandleHttpResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	err = Persist(&user)
+	err = DB.AddUser(user)
 	if err != nil {
 		HandleHttpResponse(w, http.StatusInternalServerError, "Failed to persist "+user.Id.String()+": "+err.Error())
 		return
 	}
 	HandleNewUserResponse(w, user)
-}
-
-func Persist(user *User) error {
-	var gocqlUuid gocql.UUID
-
-	// generate a unique UUID for this user
-	if user.Id == nil {
-		gocqlUuid = gocql.TimeUUID()
-		fmt.Printf("creating a new userid %v for %v\n", gocqlUuid, user.Name)
-		user.Id = &gocqlUuid
-	} else {
-		fmt.Printf("Using suggestion %v from header for %v\n", user.Id, user.Name)
-	}
-	// write data to Cassandra
-	var friends []gocql.UUID
-	err := cassandra.Session.Query(`INSERT INTO user (id, name, score, gamesplayed, friends) VALUES (?, ?, ?, ?, ?)`, user.Id, user.Name, 0, 0, friends).Exec()
-	return err
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -96,28 +85,12 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 		HandleHttpResponse(w, http.StatusBadRequest, error.Error())
 		return
 	}
-	user := User{Id: &uuid}
-	error = Get(&user)
+	user, error := DB.GetUser(uuid)
 	if error != nil {
 		HandleHttpResponse(w, http.StatusNotFound, error.Error())
 	}
 	HandleUserResponse(w, user)
 	return
-}
-
-func Get(user *User) error {
-	query := "SELECT id,name, score, gamesPlayed  FROM User where id = ?"
-	if err := cassandra.Session.Query(query, user.Id).
-		Scan(&user.Id, &user.Name, &user.GamesPlayed, &user.Highscore); err != nil {
-		return err
-	}
-	return nil
-}
-
-func Delete(uuid gocql.UUID) error {
-	// write data to Cassandra
-	err := cassandra.Session.Query(`DELETE FROM user where id = ?`, uuid).Exec()
-	return err
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +101,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Printf("userid %v", uuid)
-	error = Delete(uuid)
+	error = DB.DeleteUser(uuid)
 	if error != nil {
 		fmt.Printf("Failed to delete user %v: %v\n", uuid, error.Error())
 		// Handle not found and internal server error
@@ -152,25 +125,21 @@ func HandleNewUserResponse(w http.ResponseWriter, user User) {
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
-	var userList []UserResponse
-	m := map[string]interface{}{}
-
-	query := "SELECT id,name FROM User"
-	iterable := cassandra.Session.Query(query).Iter()
-	for iterable.MapScan(m) {
-		fmt.Printf("User{ id: %v, name: %v }\n", m["id"], m["name"])
-		userList = append(userList, UserResponse{
-			Id:   m["id"].(gocql.UUID),
-			Name: m["name"].(string),
+	var usersList []User
+	var users []UserResponse
+	userList := DB.ListUsers()
+	for _, user := range userList {
+		users = append(users, UserResponse{
+			Id:   user.Id,
+			Name: user.Name,
 		})
-		m = map[string]interface{}{}
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "   ")
-	encoder.Encode(UsersResponse{Users: userList})
+	encoder.Encode(UsersResponse{Users: users})
 }
 
-func HandleErrorsResponse(w http.ResponseWriter, errs []string) {
-	fmt.Println("errors", errs)
-	json.NewEncoder(w).Encode(ErrorResponse{Errors: errs})
+func HandleErrorsResponse(w http.ResponseWriter, error error) {
+	fmt.Println("error: ", error)
+	json.NewEncoder(w).Encode(ErrorResponse{Error: error})
 }

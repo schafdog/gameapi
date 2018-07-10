@@ -28,5 +28,5 @@ type UserState struct {
 
 // ErrorResponse returns an array of error strings if appropriate
 type ErrorResponse struct {
-	Errors []string `json:"errors"`
+	Error error `json:"error"`
 }
