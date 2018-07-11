@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocql/gocql"
-	//	"github.com/schafdog/model.go"
+	"github.com/schafdog/gameapi/db"
 	"net/http"
 )
 
-var DB *main.DB
+var DB db.UserDatabase
 
-func userInit(newDB *DB) {
+func InitDB(newDB db.UserDatabase) {
 	DB = newDB
 }
 
@@ -35,7 +35,7 @@ type UsersResponse struct {
 	Users []UserResponse `json:"users"`
 }
 
-func ParsePostUserRequest(r *http.Request) (user User, err error) {
+func ParsePostUserRequest(r *http.Request) (user *db.User, err error) {
 	var newUser NewUserRequest
 	var uuidStr string
 	var uuid *gocql.UUID
@@ -54,28 +54,29 @@ func ParsePostUserRequest(r *http.Request) (user User, err error) {
 	err = decoder.Decode(&newUser)
 	if err != nil {
 		fmt.Println("Parse Post User Request errors", err.Error())
-		return User{}, err
+		return nil, err
 	}
 	if newUser.Name == nil || len(*newUser.Name) == 0 {
-		return User{}, errors.New("User: Name is missing or empty")
+		return nil, errors.New("User: Name is missing or empty")
 	}
-	return User{Name: *newUser.Name, Id: uuid}, err
+	return &db.User{Name: *newUser.Name, Id: uuid}, err
 }
 
 func PostUser(w http.ResponseWriter, r *http.Request) {
-	var user User
+	var user *db.User
 	var err error
 	user, err = ParsePostUserRequest(r)
 	if err != nil {
 		HandleHttpResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	err = DB.AddUser(user)
+	uuid, err := DB.AddUser(*user)
 	if err != nil {
 		HandleHttpResponse(w, http.StatusInternalServerError, "Failed to persist "+user.Id.String()+": "+err.Error())
 		return
 	}
-	HandleNewUserResponse(w, user)
+	user.Id = uuid
+	HandleNewUserResponse(w, *user)
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +90,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	if error != nil {
 		HandleHttpResponse(w, http.StatusNotFound, error.Error())
 	}
-	HandleUserResponse(w, user)
+	HandleUserResponse(w, *user)
 	return
 }
 
@@ -110,14 +111,14 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func HandleUserResponse(w http.ResponseWriter, user User) {
+func HandleUserResponse(w http.ResponseWriter, user db.User) {
 	fmt.Println("user_id", user.Id)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "   ")
 	encoder.Encode(user)
 }
 
-func HandleNewUserResponse(w http.ResponseWriter, user User) {
+func HandleNewUserResponse(w http.ResponseWriter, user db.User) {
 	fmt.Println("user_id", user.Id)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "   ")
@@ -125,12 +126,15 @@ func HandleNewUserResponse(w http.ResponseWriter, user User) {
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
-	var usersList []User
 	var users []UserResponse
-	userList := DB.ListUsers()
+	userList, err := DB.ListUsers()
+	if err != nil {
+		HandleHttpResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	for _, user := range userList {
 		users = append(users, UserResponse{
-			Id:   user.Id,
+			Id:   *user.Id,
 			Name: user.Name,
 		})
 	}
