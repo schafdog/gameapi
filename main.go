@@ -1,10 +1,19 @@
 package main
 
-import ()
+import (
+	"github.com/schafdog/gameapi/db"
+)
+
+var a *App
 
 func main() {
 	a := App{}
-	a.Initialize("127.0.0.1", "gameapi", "user?")
-	defer a.Close()
+	DB, error := db.NewCassandraDB("127.0.0.1;gameapi;")
+	if error != nil {
+		panic("Error opening DB: " + error.Error())
+	}
+	a.Initialize(DB)
+
+	defer DB.Close()
 	a.Run(":8000")
 }
