@@ -8,16 +8,16 @@ import (
 
 // datastoreDB persists users to Cloud Datastore.
 // https://cloud.google.com/datastore/docs/concepts/overview
-type cassandraDB struct {
+type CassandraDB struct {
 	Session *gocql.Session
 }
 
-// Ensure cassandraDB conforms to the UserDatabase interface.
-var _ UserDatabase = &cassandraDB{}
+// Ensure CassandraDB conforms to the UserDatabase interface.
+var _ UserDatabase = &CassandraDB{}
 
 // newDB is a template for new DBs
 func NewCassandraDB(dbUrl string) (db UserDatabase, err error) {
-	this := cassandraDB{}
+	this := CassandraDB{}
 	cluster := gocql.NewCluster("127.0.0.1")
 	cluster.Keyspace = "gameapi"
 	this.Session, err = cluster.CreateSession()
@@ -30,28 +30,32 @@ func NewCassandraDB(dbUrl string) (db UserDatabase, err error) {
 }
 
 // Close closes the database.
-func (db *cassandraDB) Close() error {
+func (db *CassandraDB) Close() error {
 	// No op.
-	return fmt.Errorf("Not Implemented")
+	fmt.Printf("Closing Cassandra DB")
+	db.Session.Close()
+	return nil
 }
 
-func (db *cassandraDB) datastoreKey(userid gocql.UUID) *datastore.Key {
+func (db *CassandraDB) datastoreKey(userid gocql.UUID) *datastore.Key {
 	return nil
 }
 
 // GetUser retrieves a user by its ID.
-func (db *cassandraDB) GetUser(userid gocql.UUID) (user *User, err error) {
+func (db *CassandraDB) GetUser(userid gocql.UUID) (user *User, err error) {
 	user = &User{}
 	query := "SELECT id,name, score, gamesPlayed  FROM User where id = ?"
 	if err := db.Session.Query(query, userid).
 		Scan(&user.Id, &user.Name, &user.GamesPlayed, &user.Highscore); err != nil {
+		fmt.Printf("Failed to find user for %v", userid)
 		return nil, err
 	}
+	fmt.Printf("Found user %v for %v", user.Name, userid)
 	return user, nil
 }
 
 // AddUser saves a given user, assigning it a new ID.
-func (db *cassandraDB) AddUser(user User) (userid *gocql.UUID, err error) {
+func (db *CassandraDB) AddUser(user User) (userid *gocql.UUID, err error) {
 	var gocqlUuid gocql.UUID
 
 	// generate a unique UUID for this user
@@ -69,19 +73,19 @@ func (db *cassandraDB) AddUser(user User) (userid *gocql.UUID, err error) {
 }
 
 // DeleteUser removes a given user by its ID.
-func (db *cassandraDB) DeleteUser(userid gocql.UUID) error {
+func (db *CassandraDB) DeleteUser(userid gocql.UUID) error {
 	// write data to Cassandra
 	err := db.Session.Query(`DELETE FROM user where id = ?`, userid).Exec()
 	return err
 }
 
 // UpdateUser updates the entry for a given user.
-func (db *cassandraDB) UpdateUser(user User) error {
+func (db *CassandraDB) UpdateUser(user User) error {
 	return fmt.Errorf("Not Implemented")
 }
 
 // ListUsers returns a list of users, ordered by title.
-func (db *cassandraDB) ListUsers() ([]User, error) {
+func (db *CassandraDB) ListUsers() ([]User, error) {
 	var userList []User
 	query := "SELECT id,name FROM User"
 	m := map[string]interface{}{}
@@ -99,7 +103,7 @@ func (db *cassandraDB) ListUsers() ([]User, error) {
 }
 
 // SetState sets the state of a User
-func (db *cassandraDB) SetState(userid gocql.UUID, state State) error {
+func (db *CassandraDB) SetState(userid gocql.UUID, state State) error {
 	if err := db.Session.Query(`
       UPDATE user set gamesPlayed = ?, score = ? where id = ?`,
 		state.GamesPlayed, state.Highscore, state.Id).Exec(); err != nil {
@@ -108,7 +112,7 @@ func (db *cassandraDB) SetState(userid gocql.UUID, state State) error {
 }
 
 // GetState returns the current state of a User
-func (db *cassandraDB) GetState(userid gocql.UUID) (*State, error) {
+func (db *CassandraDB) GetState(userid gocql.UUID) (*State, error) {
 	state := State{Id: userid}
 	err := db.Session.Query(`
       select gamesPlayed, score from User where id = ?`,
@@ -117,7 +121,7 @@ func (db *cassandraDB) GetState(userid gocql.UUID) (*State, error) {
 }
 
 // SetFriends sets friends of the user
-func (db *cassandraDB) SetFriends(userid gocql.UUID, friends []gocql.UUID) error {
+func (db *CassandraDB) SetFriends(userid gocql.UUID, friends []gocql.UUID) error {
 	if err := db.Session.Query(`update User set friends = ? where id = ?`,
 		friends, userid).Exec(); err != nil {
 		fmt.Println("Failed to update friends: ", err.Error())
@@ -128,7 +132,7 @@ func (db *cassandraDB) SetFriends(userid gocql.UUID, friends []gocql.UUID) error
 
 // GetFriends returns the friends of a User
 // Not public API
-func (db *cassandraDB) GetFriends(userid gocql.UUID) (friendsList []*gocql.UUID, err error) {
+func (db *CassandraDB) GetFriends(userid gocql.UUID) (friendsList []*gocql.UUID, err error) {
 	var friends []*gocql.UUID
 	if err := db.Session.Query(`
       select friends from User where id = ?`,
@@ -141,7 +145,7 @@ func (db *cassandraDB) GetFriends(userid gocql.UUID) (friendsList []*gocql.UUID,
 
 // GetFriendsState returns a list of users, ordered by title, filtered by
 // the user who created the user entry.
-func (db *cassandraDB) GetFriendsState(userid gocql.UUID) (friendsState []*State, err error) {
+func (db *CassandraDB) GetFriendsState(userid gocql.UUID) (friendsState []*State, err error) {
 	friends, err := db.GetFriends(userid)
 	if err != nil {
 		return nil, err
