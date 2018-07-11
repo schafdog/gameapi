@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
+	"github.com/schafdog/gameapi/db"
 	"net/http"
 )
 
@@ -17,8 +18,8 @@ func ParseUserid(r *http.Request) (gocql.UUID, error) {
 	return uuid, error
 }
 
-func ParseStateRequest(r *http.Request) (State, error) {
-	var state State
+func ParseStateRequest(r *http.Request) (db.State, error) {
+	var state db.State
 	uuid, error := ParseUserid(r)
 	if error != nil {
 		return state, error
@@ -36,19 +37,18 @@ func ParseStateRequest(r *http.Request) (State, error) {
 }
 
 func GetState(w http.ResponseWriter, r *http.Request) {
-	var state State
+	var state *db.State
 	var uuid, error = ParseUserid(r)
 	if error != nil {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: error})
 		return
 	}
-	state.Id = uuid
 	state, error = DB.GetState(uuid)
-	handleStateResponse(w, state, error)
+	handleStateResponse(w, *state, error)
 }
 
 func PutState(w http.ResponseWriter, r *http.Request) {
-	var state State
+	var state db.State
 	var uuid gocql.UUID
 	var error error
 	vars := mux.Vars(r)
@@ -66,11 +66,11 @@ func PutState(w http.ResponseWriter, r *http.Request) {
 	}
 	state.Id = uuid
 	fmt.Printf("Userid %v Played %v games with highscore %v \n", state.Id, state.GamesPlayed, state.Highscore)
-	error = DB.SetState(&state)
+	error = DB.SetState(uuid, state)
 	handlePutResponse(w, state, error)
 }
 
-func handlePutResponse(w http.ResponseWriter, state State, err error) {
+func handlePutResponse(w http.ResponseWriter, state db.State, err error) {
 	if err == nil {
 		fmt.Println("user_id", state.Id)
 		w.WriteHeader(http.StatusOK)
@@ -80,12 +80,12 @@ func handlePutResponse(w http.ResponseWriter, state State, err error) {
 	}
 }
 
-func handleStateResponse(w http.ResponseWriter, state State, err error) {
+func handleStateResponse(w http.ResponseWriter, state db.State, err error) {
 	if err == nil {
 		fmt.Println("user id", state.Id, state.GamesPlayed, state.Highscore)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "   ")
-		encoder.Encode(UserState{GamesPlayed: state.GamesPlayed, Highscore: state.Highscore})
+		encoder.Encode(db.State{GamesPlayed: state.GamesPlayed, Highscore: state.Highscore})
 	} else {
 		fmt.Println("error ", err)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err})
