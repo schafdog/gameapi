@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gocql/gocql"
+	//	"github.com/schafdog/gameapi/db"
 	"net/http"
 )
 
@@ -23,10 +24,14 @@ type FriendsResponse struct {
 }
 
 func getFriends(userid gocql.UUID) (FriendsResponse, error) {
-	var friends []gocql.UUID
-	var friendsList []FriendResponse
 	friendsState, err := DB.GetFriendsState(userid)
-	return FriendsResponse{Friends: friendsState}, err
+	var friendsList []FriendResponse
+
+	for _, friend := range friendsState {
+		friendsList = append(friendsList, FriendResponse{Id: friend.Id, Name: friend.Name, Highscore: friend.Highscore})
+	}
+
+	return FriendsResponse{Friends: friendsList}, err
 }
 
 func GetFriends(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +70,7 @@ func PutFriends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Printf("PUT Friends: UpdateFriends: %v %v\n", uuid, friendsRequest.Friends)
-	err := DB.UpdateFriends(uuid, friendsRequest)
+	error = DB.SetFriends(uuid, friendsRequest.Friends)
 	var status = http.StatusOK
 	var message = ""
 	if error != nil {
