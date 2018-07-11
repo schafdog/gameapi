@@ -89,6 +89,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	user, error := DB.GetUser(uuid)
 	if error != nil {
 		HandleHttpResponse(w, http.StatusNotFound, error.Error())
+		return
 	}
 	HandleUserResponse(w, *user)
 	return
