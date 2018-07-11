@@ -21,6 +21,13 @@ type State struct {
 	GamesPlayed int        `json:"gamesPlayed"`
 }
 
+// State to form payload returning a single User state
+type FriendState struct {
+	Id        gocql.UUID `json:"id"`
+	Name      string     `json:"name"`
+	Highscore int        `json:"highscore"`
+}
+
 type UserDatabase interface {
 
 	// AGUD (aka CRUD) operations for the Model
