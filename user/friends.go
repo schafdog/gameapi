@@ -94,10 +94,3 @@ func handleFriendsResponse(w http.ResponseWriter, friends FriendsResponse, err e
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err})
 	}
 }
-
-func HandleHttpResponse(w http.ResponseWriter, status int, message string) {
-	w.WriteHeader(status)
-	if message != "" || len(message) > 0 {
-		json.NewEncoder(w).Encode(message)
-	}
-}

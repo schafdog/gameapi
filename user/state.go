@@ -9,15 +9,6 @@ import (
 	"net/http"
 )
 
-func ParseUserid(r *http.Request) (gocql.UUID, error) {
-	var uuid gocql.UUID
-	var error error
-	vars := mux.Vars(r)
-	fmt.Printf("User Id: %v\n", vars["userid"])
-	uuid, error = gocql.ParseUUID(vars["userid"])
-	return uuid, error
-}
-
 func ParseStateRequest(r *http.Request) (db.State, error) {
 	var state db.State
 	uuid, error := ParseUserid(r)
