@@ -43,7 +43,14 @@ func GetState(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: error})
 		return
 	}
+	fmt.Printf("Found uuid %v in url \n", uuid)
 	state, error = DB.GetState(uuid)
+	if error != nil {
+		msg := fmt.Sprintf("Failed to lookup uuid %v in DB \n", uuid)
+		fmt.Printf(msg)
+		HandleHttpResponse(w, http.StatusNotFound, msg)
+		return
+	}
 	handleStateResponse(w, *state, error)
 }
 
@@ -85,7 +92,7 @@ func handleStateResponse(w http.ResponseWriter, state db.State, err error) {
 		fmt.Println("user id", state.Id, state.GamesPlayed, state.Highscore)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "   ")
-		encoder.Encode(db.State{GamesPlayed: state.GamesPlayed, Highscore: state.Highscore})
+		encoder.Encode(UserState{GamesPlayed: state.GamesPlayed, Highscore: state.Highscore})
 	} else {
 		fmt.Println("error ", err)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err})
