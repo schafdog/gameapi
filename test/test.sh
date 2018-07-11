@@ -39,3 +39,9 @@ curl $OPTS -X GET                                         "http://localhost:8000
 #curl $OPTS -X DELETE                                      "http://localhost:8000/user/$USERID"         > 19_delete_user_again.log
 #curl $OPTS -X DELETE                                      "http://localhost:8000/user/$USERID"         > 19_delete_Friend_1.log
 #curl $OPTS -X DELETE                                      "http://localhost:8000/user/$USERID"         > 19_delete_Friend_2.log
+
+if git status . ; then 
+    echo "We have an regression!" 
+else
+    echo "OK"
+fi
