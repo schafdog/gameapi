@@ -1,4 +1,4 @@
-package db_model
+package db
 
 import (
 	"crypto/rand"

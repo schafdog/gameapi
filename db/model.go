@@ -1,4 +1,4 @@
-package db_model
+package db
 
 import (
 	//	"errors"
@@ -16,6 +16,7 @@ type User struct {
 // State to form payload returning a single User state
 type State struct {
 	Id          gocql.UUID `json:"id"`
+	Name        string     `json:"name"`
 	Highscore   int        `json:"score"`
 	GamesPlayed int        `json:"gamesPlayed"`
 }
