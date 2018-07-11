@@ -109,7 +109,7 @@ func (db *cassandraDB) SetState(userid gocql.UUID, state State) error {
 
 // GetState returns the current state of a User
 func (db *cassandraDB) GetState(userid gocql.UUID) (*State, error) {
-	state := State{}
+	state := State{Id: userid}
 	err := db.Session.Query(`
       select gamesPlayed, score from User where id = ?`,
 		state.Id).Scan(&state.GamesPlayed, &state.Highscore)
