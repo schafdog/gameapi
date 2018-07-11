@@ -1,31 +1,26 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
-	"github.com/schafdog/gameapi/cassandra"
+	"github.com/schafdog/gameapi/db"
 	"github.com/schafdog/gameapi/user"
 	"log"
 	"net/http"
 )
 
 type App struct {
-	Router  *mux.Router
-	Session *gocql.Session
-	//	Session cassandra.Session
+	Router *mux.Router
+	DB     db.UserDatabase
 }
 
-func (a *App) Initialize(user, password, dbname string) {
+func (a *App) Initialize(newDB db.UserDatabase) {
 	var err error
-	cluster := gocql.NewCluster("127.0.0.1")
-	cluster.Keyspace = "gameapi"
-	a.Session, err = cluster.CreateSession()
+
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("cassandra init done")
-	a.Session = cassandra.Session
+	a.DB = newDB
+	User.InitDB(newDB)
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
@@ -54,5 +49,5 @@ func (a *App) initializeRoutes() {
 }
 
 func (a *App) Close() {
-	a.Session.Close()
+	a.DB.Close()
 }
