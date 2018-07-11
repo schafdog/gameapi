@@ -1,28 +1,26 @@
 package main_test
 
 import (
+	"."
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gocql/gocql"
+	"github.com/schafdog/gameapi/db"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-
-	"."
 )
 
 var a main.App
 
 func TestMain(m *testing.M) {
 	a = main.App{}
-	a.Initialize(
-		os.Getenv("TEST_DB_USERNAME"),
-		os.Getenv("TEST_DB_PASSWORD"),
-		os.Getenv("TEST_DB_NAME"))
-	//	ensureTableExists()
+	mydb, _ := db.NewCassandraDB("db://sql")
+
+	a.Initialize(mydb)
 
 	code := m.Run()
 
@@ -32,13 +30,15 @@ func TestMain(m *testing.M) {
 }
 
 func ensureTableExists() {
-	if err := a.Session.Query(tableCreationQuery).Exec(); err != nil {
+	casDB, _ := a.DB.(*db.CassandraDB)
+	if err := casDB.Session.Query(tableCreationQuery).Exec(); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func clearTable() {
-	a.Session.Query("TRUNCATE user").Exec()
+	casDB, _ := a.DB.(*db.CassandraDB)
+	casDB.Session.Query("TRUNCATE user").Exec()
 }
 
 const tableCreationQuery = `
