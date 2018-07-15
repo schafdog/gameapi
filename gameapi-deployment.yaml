@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameapi
+spec:
+  selector:
+    matchLabels:
+      run: gameapi
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: gameapi
+    spec:
+      containers:
+      - name: gameapi
+        image: schafdog/gameapi:v1.0.3
+        ports:
+        - containerPort: 8000
