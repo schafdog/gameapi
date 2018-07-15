@@ -1,5 +1,5 @@
 
-Introduction
+# Introduction
 
 This project implements the specified API for SYBO Games test in Go and uses Cassandra DB for storage.
 
@@ -8,27 +8,32 @@ The REST API is implemented in the user package (should have been renamed).
 
 The service is unit tested using httptest and a small shell script implements a integration test.
 
-Installation
+# Installation
 
-Both Cassandra and the API can be deployed using kubernetes.
+Both Cassandra and the API can be deployed using a existing kubernetes cluster:
+## Cassandra
 
-kubectl create -f local-storages.yaml 
-kubectl create -f cassandra-statefulset.yaml
-kubectl create -f cassamdra-service.yaml
+```
+$ kubectl create -f local-storages.yaml 
+$ kubectl create -f cassandra-statefulset.yaml
+$ kubectl create -f cassamdra-service.yaml
+```
 
 When the cassandra cluster is running we need to initialize the keyspace and setup the table
 
-kubectl cp keyspace.cql cassandra-0:keyspace.cql
-kubectl cp keyspace.cql cassandra-0:user.cql
+```
+$ kubectl cp keyspace.cql cassandra-0:keyspace.cql
+$ kubectl cp keyspace.cql cassandra-0:user.cql
+$ kubectl exec -it cassandra-0 /bin/bash
+$ cat keyspace.cql |cqlsh
+$ cat user.cql |cqlsh
+$ exit
+```
 
-kubectl exec -it cassandra-0 /bin/bash
-cat keyspace.cql |cqlsh
-cat user.cql |cqlsh
+## GAMEAPI service
+It can be deployed using the following commands:
 
-GAMEAPI can be deployed using the following commands:
-
-kubectl create -f gameapi-deployment.yaml
-kubectl expose gameapi --type LoadBalancer --external-ip=<your-external-ip>
-
-
-
+```
+$ kubectl create -f gameapi-deployment.yaml
+$ kubectl expose gameapi --type LoadBalancer --external-ip=<your-external-ip>
+```
