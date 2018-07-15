@@ -18,7 +18,7 @@ var _ UserDatabase = &CassandraDB{}
 // newDB is a template for new DBs
 func NewCassandraDB(dbUrl string) (db UserDatabase, err error) {
 	this := CassandraDB{}
-	cluster := gocql.NewCluster("127.0.0.1")
+	cluster := gocql.NewCluster("cassandra")
 	cluster.Keyspace = "gameapi"
 	this.Session, err = cluster.CreateSession()
 	if err != nil {
