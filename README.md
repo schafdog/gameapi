@@ -37,3 +37,6 @@ It can be deployed using the following commands:
 $ kubectl create -f gameapi-deployment.yaml
 $ kubectl expose gameapi --type LoadBalancer --external-ip=<your-external-ip>
 ```
+
+In order to test create a tunnel from 10.19.82.157 port 8000 to schafroth.dk port 8000.
+  
