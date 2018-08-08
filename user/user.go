@@ -76,7 +76,7 @@ func PostUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.Id = uuid
-	HandleNewUserResponse(w, *user)
+	HandleUserResponse(w, UserResponse{Id: *user.Id, Name: user.Name})
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -112,18 +112,10 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func HandleUserResponse(w http.ResponseWriter, user db.User) {
-	fmt.Println("user_id", user.Id)
+func HandleUserResponse(w http.ResponseWriter, user interface{}) {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "   ")
 	encoder.Encode(user)
-}
-
-func HandleNewUserResponse(w http.ResponseWriter, user db.User) {
-	fmt.Println("user_id", user.Id)
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "   ")
-	encoder.Encode(UserResponse{Id: *user.Id, Name: user.Name})
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
