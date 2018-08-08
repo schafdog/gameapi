@@ -21,7 +21,7 @@ type State struct {
 	GamesPlayed int        `json:"gamesPlayed"`
 }
 
-// State to form payload returning a single User state
+// State to form payload returning a single Friend state
 type FriendState struct {
 	Id        gocql.UUID `json:"id"`
 	Name      string     `json:"name"`
